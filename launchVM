@@ -5,7 +5,7 @@
 set -x
 
 VMNAME=$1
-INSTANCENAME=$VMNAME-$RANDOM
+INSTANCENAME=$VMNAME-$HOSTNAME
 KUBECTL=$(ls -1 /kubectl*)
 VIRTCTL=$(ls -1 /virtctl*)
 
