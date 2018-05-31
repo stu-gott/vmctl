@@ -6,4 +6,4 @@ RUN curl -LO \
 
 ADD launchVM /launchVM
 
-ENTRYPOINT /launchVM
+ENTRYPOINT ["/launchVM"]

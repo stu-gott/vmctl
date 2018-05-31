@@ -17,4 +17,5 @@ spec:
       containers:
       - name: vmctl
         image: quay.io/fabiand/vmctl
-        args: ["testvm"]
+        args:
+        - "testvm"
