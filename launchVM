@@ -7,7 +7,7 @@ set -x
 VMNAME=$1
 VIRTCTL=$(ls -1 /virtctl*)
 
-trap "$VIRTCTL stop $VMNAME" SIGINT SIGTERM
+trap "$VIRTCTL stop $VMNAME" EXIT
 
 $VIRTCTL start $VMNAME
 
