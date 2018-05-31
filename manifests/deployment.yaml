@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vm-deployment
+  name: vmctl
   labels:
-    app: vms
+    app: vmctl
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: vm
+      app: vmctl
   template:
     metadata:
       labels:
-        app: vm
+        app: vmctl
     spec:
       containers:
-      - name: vm
+      - name: vmctl
         image: quay.io/fabiand/vmctl
         args: ["testvm"]
