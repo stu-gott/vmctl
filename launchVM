@@ -6,8 +6,8 @@ set -x
 
 VMNAME=$1
 INSTANCENAME=$VMNAME-$RANDOM
-KUBECTL=$(ls -1 /virtctl*)
-VIRTCTL=$(ls -1 /kubectl*)
+KUBECTL=$(ls -1 /kubectl*)
+VIRTCTL=$(ls -1 /virtctl*)
 
 trap "$KUBECTL delete vm $INSTANCENAME" EXIT
 
