@@ -5,10 +5,18 @@
 set -x
 
 VMNAME=$1
-VIRTCTL=$(ls -1 /virtctl*)
+INSTANCENAME=$VMNAME-$RANDOM
+KUBECTL=$(ls -1 /virtctl*)
+VIRTCTL=$(ls -1 /kubectl*)
 
-trap "$VIRTCTL stop $VMNAME" EXIT
+trap "$KUBECTL delete vm $INSTANCENAME" EXIT
 
+# Start it to have a VM reference
 $VIRTCTL start $VMNAME
+
+# Create a copy of the VM with generate name
+$KUBECTL get vm $VMNAME |\
+  | sed "/^  name:/ s/name:.*/name: $INSTANCENAME/" \
+  | kubectl apply -f -
 
 sleep inf
