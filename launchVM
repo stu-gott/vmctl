@@ -10,3 +10,5 @@ VIRTCTL=$(ls -1 /virtctl*)
 trap "$VIRTCTL stop $VMNAME" SIGINT SIGTERM
 
 $VIRTCTL start $VMNAME
+
+sleep inf
