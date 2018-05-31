@@ -15,8 +15,9 @@ trap "$KUBECTL delete vm $INSTANCENAME" EXIT
 $VIRTCTL start $VMNAME
 
 # Create a copy of the VM with generate name
-$KUBECTL get vm $VMNAME \
+$KUBECTL get vm $VMNAME -o yaml \
   | sed "/^  name:/ s/name:.*/name: $INSTANCENAME/" \
+  | tee \
   | $KUBECTL apply -f -
 
 sleep inf
