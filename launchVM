@@ -1,12 +1,12 @@
 #!/bin/bash
 
-. /podinfo/annotations
+#. /podinfo/annotations
 
-qemu-system-x86_64 \
-  -m ${vm.kubevirt.io/memory:-512} \
-  -smp ${vm.kubevirt.io/smp:-4} \
-  -drive ${vm.kubevirt.io/drive:-file=iscsi://iscsi-demo-target/iqn.2017-01.io.kubevirt:sn.42/2,snapshot} \
-  -serial mon:stdio \
-  -vnc 0.0.0.0:5900 \
-  -net user \
-  -net nic,model=virtio
+set -x
+
+VMNAME=$1
+VIRTCTL=$(ls -1 /virtctl*)
+
+trap "$VIRTCTL stop $VMNAME" SIGINT SIGTERM
+
+$VIRTCTL start $VMNAME
