@@ -17,6 +17,6 @@ $VIRTCTL start $VMNAME
 # Create a copy of the VM with generate name
 $KUBECTL get vm $VMNAME \
   | sed "/^  name:/ s/name:.*/name: $INSTANCENAME/" \
-  | kubectl apply -f -
+  | $KUBECTL apply -f -
 
 sleep inf
