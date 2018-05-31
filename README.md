@@ -4,6 +4,8 @@ Technically: Controlling KubeVirt VMs from a pod
 
 Logically: Ability to leverge Kubernetes workload controllers with KubeVirt VMs
 
+[![asciicast](https://asciinema.org/a/184816.png)](https://asciinema.org/a/184816)
+
 ## Idea
 
 Let a pod control a VM - not directly (as in creating a qemu process), but
