@@ -5,6 +5,3 @@ build:
 
 run:
 	podman run --rm -it --entrypoint /bin/sh --privileged quay.io/fabiand/vmctl
-
-push:
-	
