@@ -5,29 +5,35 @@ set -x
 VMNAME=$1
 INSTANCENAME=$VMNAME-$HOSTNAME
 
-KUBECTL=$(ls -1 /kubectl*)
-VIRTCTL=$(ls -1 /virtctl*)
+KUBECTL=$(ls -1 kubectl* || which kubectl)
+VIRTCTL=$(ls -1 virtctl* || which virtctl)
 
-trap "$KUBECTL delete vm $INSTANCENAME" EXIT
+trap "$KUBECTL delete --grace-period=0 vm $INSTANCENAME" EXIT
 
-# Start it to have a VM reference
-$VIRTCTL start $VMNAME
-
+# FIXME THIS WILL NOT WORK
+# As long as we don't fix https://github.com/kubevirt/kubevirt/issues/1101
 cat > vmToPodAffinity <<EOF
-  affinity:
-    podAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        topologyKey: 'kubernetes.io/hostname'
-        labelSelector:
-          matchLabels:
-            guest: $VMNAME
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: guest
+                operator: In
+                values:
+                - $VMNAME
+            topologyKey: 'kubernetes.io/hostname'
 EOF
 
 # Create a copy of the VM with generate name
-$KUBECTL get vm $VMNAME -o yaml \
+$KUBECTL get ovm $VMNAME -o yaml \
   | sed "/^  name:/ s/name:.*/name: $INSTANCENAME/" \
-  | sed "/^spec:/ r vmToPodAffinity" \
-  | tee \
+  | sed "s/running:.*/running: true/" \
+  | sed "/^    spec:/ r vmToPodAffinity" \
+  | sed "/status:/,$ d" \
+  | tee /dev/stderr \
   | $KUBECTL apply -f -
+
+$KUBECTL get -o yaml ovm $INSTANCENAME
 
 sleep inf
