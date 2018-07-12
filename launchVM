@@ -10,8 +10,6 @@ VIRTCTL=$(ls -1 virtctl* || which virtctl)
 
 trap "$KUBECTL delete --grace-period=0 vm $INSTANCENAME" EXIT
 
-# FIXME THIS WILL NOT WORK
-# As long as we don't fix https://github.com/kubevirt/kubevirt/issues/1101
 cat > vmToPodAffinity <<EOF
       affinity:
         podAffinity:
