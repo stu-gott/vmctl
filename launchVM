@@ -1,36 +1,21 @@
-#!/bin/sh
+#!/bin/bash
 
-set -x
-
-VMNAME=$1
-INSTANCENAME=$VMNAME-$HOSTNAME
+PROTOTYPEVMNAME=$1
+INSTANCENAME=$PROTOTYPEVMNAME-$HOSTNAME
 
 KUBECTL=$(ls -1 kubectl* || which kubectl)
 VIRTCTL=$(ls -1 virtctl* || which virtctl)
 
 trap "$KUBECTL delete --grace-period=0 vm $INSTANCENAME" EXIT
 
-cat > vmToPodAffinity <<EOF
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: guest
-                operator: In
-                values:
-                - $VMNAME
-            topologyKey: 'kubernetes.io/hostname'
-EOF
+# Get the prototype
+$KUBECTL get vm $PROTOTYPEVMNAME -o json | tee prototype.json
 
-# Create a copy of the VM with generate name
-$KUBECTL get ovm $VMNAME -o yaml \
-  | sed "/^  name:/ s/name:.*/name: $INSTANCENAME/" \
-  | sed "s/running:.*/running: true/" \
-  | sed "/^    spec:/ r vmToPodAffinity" \
-  | sed "/status:/,$ d" \
-  | tee /dev/stderr \
-  | $KUBECTL apply -f -
+# Modify prototype
+js derive_vm.js prototype.json $INSTANCENAME | tee instance.json
+
+# Create VM
+$KUBECTL apply -f instance.json
 
 $KUBECTL get -o yaml ovm $INSTANCENAME
 

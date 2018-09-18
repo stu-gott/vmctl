@@ -1,4 +1,4 @@
 *.swp
 virtctl*
 kubectl*
-vmToPodAffinity
+*.json
