@@ -6,7 +6,7 @@ vmInstance = JSON.parse(read(prototypeVmFile))
 delete vmInstance.metadata.ownerReferences
 vmInstance.metadata.name = instanceName
 vmInstance.spec.running = true
-vmInstance.spec.template.spec.affinity = {
+/*vmInstance.spec.template.spec.affinity = {
   "podAffinity": {
     "requiredDuringSchedulingIgnoredDuringExecution": [
       {
@@ -25,7 +25,7 @@ vmInstance.spec.template.spec.affinity = {
       }
     ]
   }
-}
+}*/
 vmInstance.status = {}
 
 print(JSON.stringify(vmInstance))
