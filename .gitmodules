@@ -1,3 +1,6 @@
 [submodule "ci"]
 	path = ci
 	url = https://github.com/fabiand/traviskube
+[submodule "demo"]
+	path = demo
+	url = https://github.com/kubevirt/demo.git

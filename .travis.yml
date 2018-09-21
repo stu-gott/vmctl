@@ -12,6 +12,9 @@ env:
   matrix:
     - CPLATFORM=minikube CDIST=kubernetes CVER=1.11.3
 
+services:
+  - docker
+
 cache:
   directories:
   - cache
@@ -28,4 +31,7 @@ before_script:
 - bash -x ci/deploy-kubevirt $CDIST $KUBEVIRT_VER
 
 script:
+- |
+  eval $(minikube docker-env)
+  make build
 - bash -x test.sh

@@ -5,7 +5,7 @@ metadata:
   labels:
     app: vmctl
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: vmctl
@@ -17,5 +17,6 @@ spec:
       containers:
       - name: vmctl
         image: quay.io/fabiand/vmctl
+        imagePullPolicy: IfNotPresent
         args:
         - "testvm"
