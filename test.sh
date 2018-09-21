@@ -14,7 +14,7 @@ kubectl apply \
 
 kubectl get deployment | grep vmctl
 
-for SCALE in 1 2 3 2 1;
+for SCALE in 1 2 3;
 do
   kubectl scale --replicas=$SCALE deployment/vmctl
   kubectl get deployments | egrep "vmctl\s+$SCALE"
