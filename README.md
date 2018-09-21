@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/fabiand/vmctl.svg?branch=master)](https://travis-ci.com/fabiand/vmctl)
+
 # Overview
 
 Technically: Controlling KubeVirt VMs from a pod
@@ -20,7 +22,6 @@ machines).
   _instances_
 - The pod can be simple
 - All VM configurations are done on the corresponding _virtual machine_
-  (previously offline virtual machine).
 
 # Try
 
@@ -113,5 +114,5 @@ testvm    41m
 
 And the instance is gone again.
 
-> **Note**: One VM will always be running, as it act's as a "template"
-> (overloaded term this is) for all the other instances we are creating.
+> **Note**: One VM will always be defined, as it act's as the prototype
+> for the VMs any `vmctl` pod is creating.
