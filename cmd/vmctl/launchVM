@@ -13,14 +13,12 @@ VIRTCTL=${VIRTCTL:-$(which virtctl)}
 
 trap "$KUBECTL delete --grace-period=0 vm $VMCTLVM" EXIT
 
-# Get the prototype
-$KUBECTL get vm $PROTOTYPEVMNAME -o json | tee $VMCTLDIR/prototype.json
+cd $VMCTLDIR
 
-# Modify prototype
-js $VMCTLDIR/derive_vm.js prototype.json $VMCTLVM | tee $VMCTLDIR/instance.json
-
-# Create VM
-$KUBECTL apply -f $VMCTLDIR/instance.json
+# Get the prototype, derive a new vm, create it
+$KUBECTL get vm $PROTOTYPEVMNAME -o json > prototype.json
+js derive_vm.js prototype.json $VMCTLVM \
+  | $KUBECTL apply -f -
 
 $KUBECTL get -o yaml vm $VMCTLVM
 
