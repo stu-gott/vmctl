@@ -1,12 +1,12 @@
 prototypeVmFile = arguments[0]
 instanceName = arguments[1]
 
-vmInstance = JSON.parse(read(prototypeVmFile))
+vm = JSON.parse(read(prototypeVmFile))
 
-delete vmInstance.metadata.ownerReferences
-vmInstance.metadata.name = instanceName
-vmInstance.spec.running = true
-/*vmInstance.spec.template.spec.affinity = {
+delete vm.metadata.ownerReferences
+vm.metadata.name = instanceName
+vm.spec.running = true
+/*vm.spec.template.spec.affinity = {
   "podAffinity": {
     "requiredDuringSchedulingIgnoredDuringExecution": [
       {
@@ -26,6 +26,6 @@ vmInstance.spec.running = true
     ]
   }
 }*/
-vmInstance.status = {}
+vm.status = {}
 
-print(JSON.stringify(vmInstance))
+print(JSON.stringify(vm))
