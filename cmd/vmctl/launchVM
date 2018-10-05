@@ -11,7 +11,7 @@ VMCTLVM=$PROTOTYPEVMNAME-$HOSTNAME
 KUBECTL=${KUBECTL:-$(which kubectl)}
 VIRTCTL=${VIRTCTL:-$(which virtctl)}
 
-trap "$KUBECTL delete --grace-period=0 vm $VMCTLVM" EXIT
+trap "$KUBECTL delete vm $VMCTLVM" EXIT
 
 cd $VMCTLDIR
 
