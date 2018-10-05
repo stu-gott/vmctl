@@ -1,31 +1,13 @@
 prototypeVmFile = arguments[0]
 instanceName = arguments[1]
+nodeName = arguments[2]
 
-vmInstance = JSON.parse(read(prototypeVmFile))
+vm = JSON.parse(read(prototypeVmFile))
 
-delete vmInstance.metadata.ownerReferences
-vmInstance.metadata.name = instanceName
-vmInstance.spec.running = true
-/*vmInstance.spec.template.spec.affinity = {
-  "podAffinity": {
-    "requiredDuringSchedulingIgnoredDuringExecution": [
-      {
-        "labelSelector": {
-          "matchExpressions": [
-            {
-              "key": "guest",
-              "operator": "In",
-              "values": [
-                instanceName
-              ]
-            }
-          ]
-        },
-        "topologyKey": "kubernetes.io/hostname"
-      }
-    ]
-  }
-}*/
-vmInstance.status = {}
+delete vm.metadata.ownerReferences
+vm.metadata.name = instanceName
+vm.spec.running = true
+vm.spec.template.spec.nodeSelector = {"kubernetes.io/hostname": nodeName}
+vm.status = {}
 
-print(JSON.stringify(vmInstance))
+print(JSON.stringify(vm))
