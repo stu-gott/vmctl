@@ -6,7 +6,7 @@ RUN curl -LO \
 ENV KUBECTL=/kubectl
 
 RUN curl -L -o virtctl \
-  https://github.com/kubevirt/kubevirt/releases/download/v0.8.0/virtctl-v0.8.0-linux-amd64 \
+  https://github.com/kubevirt/kubevirt/releases/download/v0.9.1/virtctl-v0.9.1-linux-amd64 \
   && chmod a+x virtctl
 ENV VIRTCTL=/virtctl
 
