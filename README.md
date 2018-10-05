@@ -39,16 +39,6 @@ Follow this guide to setup the base demo:
 
 https://github.com/kubevirt/demo
 
-You will also need to assign a role to the default user in order to give the
-vmctl pod enough privileges to work with VMs:
-
-```bash
-$ kubectl create rolebinding default-admin \
-  --clusterrole=cluster-admin \
-  --serviceaccount=default:default \
-  --namespace default
-```
-
 ### Create deployment
 
 ```bash
