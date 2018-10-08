@@ -104,7 +104,6 @@ func (app *vmCtlApp) Run() {
 func (app *vmCtlApp) AddFlags() {
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 
-	flag.StringVar(&app.prototypeVMName, "prototype-vm", "", "Name of VirtualMachine to use as prototype")
 	flag.StringVar(&app.prototypeNS, "prototype-ns", core.NamespaceDefault, "Namespace of prototype VirtualMachine")
 	flag.StringVar(&app.namespace, "namespace", core.NamespaceDefault, "Namespace to create VirtualMachine in")
 	flag.StringVar(&app.hostOverride, "hostname-override", hostOverride,
@@ -114,7 +113,13 @@ func (app *vmCtlApp) AddFlags() {
 func main() {
 	app := &vmCtlApp{}
 	service.Setup(app)
-	app.Run()
-
+	if flag.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Prototype vm name is required\n")
+		flag.Usage()
+		os.Exit(1)
+	} else {
+		app.prototypeVMName = flag.Arg(0)
+		app.Run()
+	}
 	os.Exit(0)
 }
