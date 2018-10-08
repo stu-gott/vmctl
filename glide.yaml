@@ -1,0 +1,3 @@
+package: kubevirt.io/vmctl
+import:
+- package: github.com/kubevirt/kubevirt/pkg/kubecli
