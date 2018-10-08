@@ -56,13 +56,13 @@ func deriveVM(vm *v1.VirtualMachine, nodeName string) *v1.VirtualMachine {
 	instanceName := fmt.Sprintf("%s-%s", vm.GetName(), nodeName)
 
 	newVM := vm.DeepCopy()
-	vm.ObjectMeta.OwnerReferences = nil
-	vm.ObjectMeta.Name = instanceName
-	vm.Spec.Running = true
+	newVM.ObjectMeta.OwnerReferences = nil
+	newVM.ObjectMeta.Name = instanceName
+	newVM.Spec.Running = true
 	if vm.Spec.Template == nil {
-		vm.Spec.Template = &v1.VirtualMachineInstanceTemplateSpec{}
+		newVM.Spec.Template = &v1.VirtualMachineInstanceTemplateSpec{}
 	}
-	vm.Spec.Template.Spec.NodeSelector["kubernetes.io/hostname"] = nodeName
+	newVM.Spec.Template.Spec.NodeSelector["kubernetes.io/hostname"] = nodeName
 
 	return newVM
 }
