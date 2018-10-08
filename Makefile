@@ -1,7 +1,7 @@
 TAG=quay.io/fabiand/vmctl
 
 ifdef BUILD_NEXT
-build:
+docker: build
 	buildah bud -t $(TAG) .
 
 run:
@@ -11,5 +11,15 @@ push:
 	echo
 endif
 
-build:
+docker: build
 	docker build -t $(TAG) cmd/vmctl/
+
+build: format
+	pushd cmd/vmctl > /dev/null ;\
+	go build vmctl.go ;\
+	popd > /dev/null
+
+format:
+	go fmt ./...
+
+.PHONY: format docker
