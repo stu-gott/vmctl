@@ -28,12 +28,17 @@ import (
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/apis/core"
 
+	"io/ioutil"
 	"kubevirt.io/kubevirt/pkg/api/v1"
 	"kubevirt.io/kubevirt/pkg/kubecli"
 	"kubevirt.io/kubevirt/pkg/service"
 )
 
-const hostOverride = ""
+const (
+	hostOverride = ""
+	podNamePath  = "/etc/podinfo/name"
+	podResource  = "pods"
+)
 
 type vmCtlApp struct {
 	prototypeVMName string
@@ -69,23 +74,44 @@ func deriveVM(vm *v1.VirtualMachine, nodeName string) *v1.VirtualMachine {
 	return newVM
 }
 
+func getNodeName(virtCli kubecli.KubevirtClient, namespace string) (string, error) {
+	podName, err := ioutil.ReadFile(podNamePath)
+	if err != nil {
+		return "", fmt.Errorf("unable to find pod name: %v", err)
+	}
+
+	kubeClient := virtCli.CoreV1()
+	getOptions := k8smetav1.GetOptions{}
+
+	pod, err := kubeClient.Pods(namespace).Get(string(podName), getOptions)
+	if err != nil {
+		return "", fmt.Errorf("unable to look get pod: %v", err)
+	}
+
+	return pod.Spec.NodeName, nil
+}
+
 func (app *vmCtlApp) Run() {
+	virtCli, err := kubecli.GetKubevirtClient()
+
 	hostname := app.hostOverride
 	if hostname == "" {
-		defaultHostName, err := os.Hostname()
+		hostname, err = getNodeName(virtCli, app.namespace)
 		if err != nil {
 			panic(err)
 		}
-		hostname = defaultHostName
 	}
 
-	virtCli, err := kubecli.GetKubevirtClient()
 	if err != nil {
 		panic(fmt.Errorf("unable to get kubevirt client: %v", err))
 	}
 
 	getOptions := &k8smetav1.GetOptions{}
-	vm, err := virtCli.VirtualMachine(app.prototypeNS).Get(app.prototypeVMName, getOptions)
+	prototypeNS := app.prototypeNS
+	if prototypeNS == "" {
+		prototypeNS = app.namespace
+	}
+	vm, err := virtCli.VirtualMachine(prototypeNS).Get(app.prototypeVMName, getOptions)
 	if err != nil {
 		panic(fmt.Errorf("unable to fetch prototype vm: %v", err))
 	}
@@ -106,10 +132,11 @@ func (app *vmCtlApp) Run() {
 func (app *vmCtlApp) AddFlags() {
 	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
 
-	flag.StringVar(&app.prototypeNS, "prototype-ns", core.NamespaceDefault, "Namespace of prototype VirtualMachine")
-	flag.StringVar(&app.namespace, "namespace", core.NamespaceDefault, "Namespace to create VirtualMachine in")
+	flag.StringVar(&app.namespace, "namespace", core.NamespaceDefault, "Namespace to create VirtualMachine in.")
+	flag.StringVar(&app.prototypeNS, "proto-namespace", "", "Namespace of prototype VirtualMachine. Defaults to <namespace>")
+
 	flag.StringVar(&app.hostOverride, "hostname-override", hostOverride,
-		"Name under which the node is registered in Kubernetes, where this vmctl instance is running on")
+		"Name under which the node is registered in Kubernetes, where this vmctl instance is running on.")
 }
 
 func main() {
