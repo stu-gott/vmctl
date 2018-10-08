@@ -13,26 +13,108 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * Copyright 2017, 2018 Red Hat, Inc.
+ * Copyright 2018 Red Hat, Inc.
  *
  */
 
 package main
 
 import (
+	goflag "flag"
+	"fmt"
+	flag "github.com/spf13/pflag"
 	"os"
 
-//	// Import to initialize client auth plugins.
-//	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/apis/core"
 
-        "kubevirt.io/kubevirt/pkg/kubecli"
+	"kubevirt.io/kubevirt/pkg/api/v1"
+	"kubevirt.io/kubevirt/pkg/kubecli"
+	"kubevirt.io/kubevirt/pkg/service"
 )
 
+const hostOverride = ""
 
+type vmCtlApp struct {
+	prototypeVMName string
+	prototypeNS     string
+	namespace       string
+	hostOverride    string
+}
 
+var _ service.Service = &vmCtlApp{}
+
+func cleanup(virtCli kubecli.KubevirtClient, namespace string, vmName string) {
+	deleteOptions := &k8smetav1.DeleteOptions{}
+	err := virtCli.VirtualMachine(namespace).Delete(vmName, deleteOptions)
+	if err != nil {
+		panic(fmt.Errorf("unable to delete VM: %s/%s", namespace, vmName))
+	}
+}
+
+func deriveVM(vm *v1.VirtualMachine, nodeName string) *v1.VirtualMachine {
+	instanceName := fmt.Sprintf("%s-%s", vm.GetName(), nodeName)
+
+	newVM := vm.DeepCopy()
+	vm.ObjectMeta.OwnerReferences = nil
+	vm.ObjectMeta.Name = instanceName
+	vm.Spec.Running = true
+	if vm.Spec.Template == nil {
+		vm.Spec.Template = &v1.VirtualMachineInstanceTemplateSpec{}
+	}
+	vm.Spec.Template.Spec.NodeSelector["kubernetes.io/hostname"] = nodeName
+
+	return newVM
+}
+
+func (app *vmCtlApp) Run() {
+	hostname := app.hostOverride
+	if hostname == "" {
+		defaultHostName, err := os.Hostname()
+		if err != nil {
+			panic(err)
+		}
+		hostname = defaultHostName
+	}
+
+	virtCli, err := kubecli.GetKubevirtClient()
+	if err != nil {
+		panic(fmt.Errorf("unable to get kubevirt client: %v", err))
+	}
+
+	getOptions:= &k8smetav1.GetOptions{}
+	vm, err := virtCli.VirtualMachine(app.prototypeNS).Get(app.prototypeVMName, getOptions)
+	if err != nil {
+		panic(fmt.Errorf("unable to fetch prototype vm: %v", err))
+	}
+
+	newVM := deriveVM(vm, hostname)
+	_, err = virtCli.VirtualMachine(app.namespace).Create(newVM)
+	if err != nil {
+		panic(fmt.Errorf("unable to create vm: %v", err))
+	} else {
+		defer cleanup(virtCli, app.namespace, newVM.GetName())
+	}
+
+	// wait forever
+	stop := make(chan struct{})
+	<-stop
+}
+
+func (app *vmCtlApp) AddFlags() {
+	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+
+	flag.StringVar(&app.prototypeVMName, "prototype-vm", "", "Name of VirtualMachine to use as prototype")
+	flag.StringVar(&app.prototypeNS, "prototype-ns", core.NamespaceDefault, "Namespace of prototype VirtualMachine")
+	flag.StringVar(&app.namespace, "namespace", core.NamespaceDefault, "Namespace to create VirtualMachine in")
+	flag.StringVar(&app.hostOverride, "hostname-override", hostOverride,
+		"Name under which the node is registered in Kubernetes, where this vmctl instance is running on")
+}
 
 func main() {
-	virtCli, err := kubecli.GetKubevirtClient()
+	app := &vmCtlApp{}
+	service.Setup(app)
+	app.Run()
 
 	os.Exit(0)
 }
