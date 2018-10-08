@@ -1,4 +1,5 @@
 *.swp
-virtctl*
-kubectl*
 *.json
+.idea
+*.iml
+vmctl
