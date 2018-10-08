@@ -57,6 +57,8 @@ func deriveVM(vm *v1.VirtualMachine, nodeName string) *v1.VirtualMachine {
 
 	newVM := vm.DeepCopy()
 	newVM.ObjectMeta.OwnerReferences = nil
+	newVM.Status = v1.VirtualMachineStatus{}
+
 	newVM.ObjectMeta.Name = instanceName
 	newVM.Spec.Running = true
 	if vm.Spec.Template == nil {
