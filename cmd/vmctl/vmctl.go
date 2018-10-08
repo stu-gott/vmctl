@@ -82,7 +82,7 @@ func (app *vmCtlApp) Run() {
 		panic(fmt.Errorf("unable to get kubevirt client: %v", err))
 	}
 
-	getOptions:= &k8smetav1.GetOptions{}
+	getOptions := &k8smetav1.GetOptions{}
 	vm, err := virtCli.VirtualMachine(app.prototypeNS).Get(app.prototypeVMName, getOptions)
 	if err != nil {
 		panic(fmt.Errorf("unable to fetch prototype vm: %v", err))
