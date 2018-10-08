@@ -1,17 +1,5 @@
 FROM fedora
 
-RUN curl -LO \
-  https://storage.googleapis.com/kubernetes-release/release/v1.11.3/bin/linux/amd64/kubectl \
-  && chmod a+x kubectl
-ENV KUBECTL=/kubectl
+ADD vmctl /
 
-RUN curl -L -o virtctl \
-  https://github.com/kubevirt/kubevirt/releases/download/v0.9.1/virtctl-v0.9.1-linux-amd64 \
-  && chmod a+x virtctl
-ENV VIRTCTL=/virtctl
-
-RUN dnf install -y js
-
-ADD . /vmctl
-
-ENTRYPOINT ["/vmctl/launchVM"]
+ENTRYPOINT ["/vmctl"]
