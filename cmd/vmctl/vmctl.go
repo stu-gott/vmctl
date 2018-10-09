@@ -24,6 +24,7 @@ import (
 	"fmt"
 	flag "github.com/spf13/pflag"
 	"os"
+	"os/signal"
 
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/apis/core"
@@ -60,14 +61,18 @@ func cleanup(virtCli kubecli.KubevirtClient, namespace string, vmName string) {
 func deriveVM(vm *v1.VirtualMachine, nodeName string) *v1.VirtualMachine {
 	instanceName := fmt.Sprintf("%s-%s", vm.GetName(), nodeName)
 
-	newVM := vm.DeepCopy()
-	newVM.ObjectMeta.OwnerReferences = nil
-	newVM.Status = v1.VirtualMachineStatus{}
+	newVM := &v1.VirtualMachine{}
+
+	spec := vm.Spec.DeepCopy()
+	newVM.Spec = *spec
 
 	newVM.ObjectMeta.Name = instanceName
 	newVM.Spec.Running = true
 	if vm.Spec.Template == nil {
 		newVM.Spec.Template = &v1.VirtualMachineInstanceTemplateSpec{}
+	}
+	if newVM.Spec.Template.Spec.NodeSelector == nil {
+		newVM.Spec.Template.Spec.NodeSelector = map[string]string{}
 	}
 	newVM.Spec.Template.Spec.NodeSelector["kubernetes.io/hostname"] = nodeName
 
@@ -125,7 +130,8 @@ func (app *vmCtlApp) Run() {
 	}
 
 	// wait forever
-	stop := make(chan struct{})
+	stop := make(chan os.Signal)
+	signal.Notify(stop, os.Interrupt)
 	<-stop
 }
 
