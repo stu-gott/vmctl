@@ -32,6 +32,7 @@ import (
 	"io/ioutil"
 	"kubevirt.io/kubevirt/pkg/api/v1"
 	"kubevirt.io/kubevirt/pkg/kubecli"
+	"kubevirt.io/kubevirt/pkg/log"
 	"kubevirt.io/kubevirt/pkg/service"
 )
 
@@ -51,10 +52,11 @@ type vmCtlApp struct {
 var _ service.Service = &vmCtlApp{}
 
 func cleanup(virtCli kubecli.KubevirtClient, namespace string, vmName string) {
+	logger := log.DefaultLogger()
 	deleteOptions := &k8smetav1.DeleteOptions{}
 	err := virtCli.VirtualMachine(namespace).Delete(vmName, deleteOptions)
 	if err != nil {
-		panic(fmt.Errorf("unable to delete VM: %s/%s", namespace, vmName))
+		logger.Errorf("unable to delete VM: %s/%s", namespace, vmName)
 	}
 }
 
@@ -97,7 +99,13 @@ func getNodeName(virtCli kubecli.KubevirtClient, namespace string) (string, erro
 }
 
 func (app *vmCtlApp) Run() {
+	logger := log.DefaultLogger()
+
 	virtCli, err := kubecli.GetKubevirtClient()
+	if err != nil {
+		logger.Reason(err).Errorf("unable to get kubevirt client")
+		return
+	}
 
 	hostname := app.hostOverride
 	if hostname == "" {
@@ -107,9 +115,7 @@ func (app *vmCtlApp) Run() {
 		}
 	}
 
-	if err != nil {
-		panic(fmt.Errorf("unable to get kubevirt client: %v", err))
-	}
+	logger.Infof("running on node: %s", hostname)
 
 	getOptions := &k8smetav1.GetOptions{}
 	prototypeNS := app.prototypeNS
@@ -118,16 +124,20 @@ func (app *vmCtlApp) Run() {
 	}
 	vm, err := virtCli.VirtualMachine(prototypeNS).Get(app.prototypeVMName, getOptions)
 	if err != nil {
-		panic(fmt.Errorf("unable to fetch prototype vm: %v", err))
+		logger.Reason(err).Errorf("unable to fetch prototype vm")
+		return
 	}
 
 	newVM := deriveVM(vm, hostname)
 	_, err = virtCli.VirtualMachine(app.namespace).Create(newVM)
 	if err != nil {
-		panic(fmt.Errorf("unable to create vm: %v", err))
+		logger.Reason(err).Errorf("unable to create vm")
+		return
 	} else {
 		defer cleanup(virtCli, app.namespace, newVM.GetName())
 	}
+
+	logger.Object(newVM).Infof("Virtual Machine launched")
 
 	// wait forever
 	stop := make(chan os.Signal)
