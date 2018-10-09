@@ -56,7 +56,9 @@ func cleanup(virtCli kubecli.KubevirtClient, namespace string, vmName string) {
 	deleteOptions := &k8smetav1.DeleteOptions{}
 	err := virtCli.VirtualMachine(namespace).Delete(vmName, deleteOptions)
 	if err != nil {
-		logger.Errorf("unable to delete VM: %s/%s", namespace, vmName)
+		logger.Errorf("Unable to delete VM: %s/%s", namespace, vmName)
+	} else {
+		logger.Infof("VM deleted: %s", vmName)
 	}
 }
 
@@ -84,7 +86,7 @@ func deriveVM(vm *v1.VirtualMachine, nodeName string) *v1.VirtualMachine {
 func getNodeName(virtCli kubecli.KubevirtClient, namespace string) (string, error) {
 	podName, err := ioutil.ReadFile(podNamePath)
 	if err != nil {
-		return "", fmt.Errorf("unable to find pod name: %v", err)
+		return "", fmt.Errorf("Unable to find pod name: %v", err)
 	}
 
 	kubeClient := virtCli.CoreV1()
@@ -92,7 +94,7 @@ func getNodeName(virtCli kubecli.KubevirtClient, namespace string) (string, erro
 
 	pod, err := kubeClient.Pods(namespace).Get(string(podName), getOptions)
 	if err != nil {
-		return "", fmt.Errorf("unable to look get pod: %v", err)
+		return "", fmt.Errorf("Unable to look get pod: %v", err)
 	}
 
 	return pod.Spec.NodeName, nil
@@ -103,7 +105,7 @@ func (app *vmCtlApp) Run() {
 
 	virtCli, err := kubecli.GetKubevirtClient()
 	if err != nil {
-		logger.Reason(err).Errorf("unable to get kubevirt client")
+		logger.Reason(err).Errorf("Unable to get KubeVirt client")
 		return
 	}
 
@@ -115,7 +117,7 @@ func (app *vmCtlApp) Run() {
 		}
 	}
 
-	logger.Infof("running on node: %s", hostname)
+	logger.Infof("Running on node: %s", hostname)
 
 	getOptions := &k8smetav1.GetOptions{}
 	prototypeNS := app.prototypeNS
@@ -124,14 +126,14 @@ func (app *vmCtlApp) Run() {
 	}
 	vm, err := virtCli.VirtualMachine(prototypeNS).Get(app.prototypeVMName, getOptions)
 	if err != nil {
-		logger.Reason(err).Errorf("unable to fetch prototype vm")
+		logger.Reason(err).Errorf("Unable to fetch prototype VM")
 		return
 	}
 
 	newVM := deriveVM(vm, hostname)
 	_, err = virtCli.VirtualMachine(app.namespace).Create(newVM)
 	if err != nil {
-		logger.Reason(err).Errorf("unable to create vm")
+		logger.Reason(err).Errorf("Unable to create VM")
 		return
 	} else {
 		defer cleanup(virtCli, app.namespace, newVM.GetName())
@@ -159,7 +161,7 @@ func main() {
 	app := &vmCtlApp{}
 	service.Setup(app)
 	if flag.NArg() < 1 {
-		fmt.Fprintf(os.Stderr, "Prototype vm name is required\n")
+		fmt.Fprintf(os.Stderr, "Prototype VM name is required\n")
 		flag.Usage()
 		os.Exit(1)
 	} else {
