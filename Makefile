@@ -20,6 +20,6 @@ build-go: format
 	popd > /dev/null
 
 format:
-	go fmt ./...
+	go fmt cmd/vmctl/vmctl.go
 
 .PHONY: format docker
