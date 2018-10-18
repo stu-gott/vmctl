@@ -15,9 +15,8 @@ build: build-go
 	docker build -t $(TAG) cmd/vmctl/
 
 build-go: format
-	pushd cmd/vmctl > /dev/null ;\
-	go build vmctl.go ;\
-	popd > /dev/null
+	cd cmd/vmctl ;\
+	go build vmctl.go
 
 format:
 	go fmt cmd/vmctl/vmctl.go
