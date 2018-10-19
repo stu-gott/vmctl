@@ -25,6 +25,7 @@ import (
 	flag "github.com/spf13/pflag"
 	"os"
 	"os/signal"
+	"syscall"
 
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/apis/core"
@@ -143,7 +144,7 @@ func (app *vmCtlApp) Run() {
 
 	// wait forever
 	stop := make(chan os.Signal)
-	signal.Notify(stop, os.Interrupt)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 }
 
