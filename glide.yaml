@@ -1,0 +1,9 @@
+package: kubevirt.io/vmctl
+import:
+- package: kubevirt.io/kubevirt
+  repo: https://github.com/kubevirt/kubevirt.git
+  version: ~0.9
+- package: kubevirt.io/containerized-data-importer
+  repo: https://github.com/kubevirt/containerized-data-importer.git
+- package: github.com/gorilla/websocket
+  version: 0647012449a1878977514a346b26637dd022446c
