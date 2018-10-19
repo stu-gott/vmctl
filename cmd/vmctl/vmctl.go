@@ -63,8 +63,8 @@ func cleanup(virtCli kubecli.KubevirtClient, namespace string, vmName string) {
 	}
 }
 
-func deriveVM(vm *v1.VirtualMachine, nodeName string) *v1.VirtualMachine {
-	instanceName := fmt.Sprintf("%s-%s", vm.GetName(), nodeName)
+func deriveVM(vm *v1.VirtualMachine, podName string, nodeName string) *v1.VirtualMachine {
+	instanceName := fmt.Sprintf("%s-%s", vm.GetName(), podName)
 
 	newVM := &v1.VirtualMachine{}
 
@@ -84,18 +84,26 @@ func deriveVM(vm *v1.VirtualMachine, nodeName string) *v1.VirtualMachine {
 	return newVM
 }
 
-func getNodeName(virtCli kubecli.KubevirtClient, namespace string) (string, error) {
+func getPodName() (string, error) {
 	podName, err := ioutil.ReadFile(podNamePath)
 	if err != nil {
 		return "", fmt.Errorf("Unable to find pod name: %v", err)
+	}
+	return string(podName), nil
+}
+
+func getNodeName(virtCli kubecli.KubevirtClient, namespace string) (string, error) {
+	podName, err := getPodName()
+	if err != nil {
+		return "", err
 	}
 
 	kubeClient := virtCli.CoreV1()
 	getOptions := k8smetav1.GetOptions{}
 
-	pod, err := kubeClient.Pods(namespace).Get(string(podName), getOptions)
+	pod, err := kubeClient.Pods(namespace).Get(podName, getOptions)
 	if err != nil {
-		return "", fmt.Errorf("Unable to look get pod: %v", err)
+		return "", fmt.Errorf("Unable to get pod: %v", err)
 	}
 
 	return pod.Spec.NodeName, nil
@@ -110,15 +118,21 @@ func (app *vmCtlApp) Run() {
 		return
 	}
 
-	hostname := app.hostOverride
-	if hostname == "" {
-		hostname, err = getNodeName(virtCli, app.namespace)
+	nodeName := app.hostOverride
+	if nodeName == "" {
+		nodeName, err = getNodeName(virtCli, app.namespace)
 		if err != nil {
-			panic(err)
+			logger.Reason(err).Errorf("Unable to get node name")
+			return
 		}
 	}
 
-	logger.Infof("Running on node: %s", hostname)
+	logger.Infof("Running on node: %s", nodeName)
+
+	podName, err := getPodName()
+	if err != nil {
+		logger.Reason(err).Errorf("Unable to get pod name")
+	}
 
 	getOptions := &k8smetav1.GetOptions{}
 	prototypeNS := app.prototypeNS
@@ -131,13 +145,11 @@ func (app *vmCtlApp) Run() {
 		return
 	}
 
-	newVM := deriveVM(vm, hostname)
+	newVM := deriveVM(vm, podName, nodeName)
 	_, err = virtCli.VirtualMachine(app.namespace).Create(newVM)
 	if err != nil {
 		logger.Reason(err).Errorf("Unable to create VM")
 		return
-	} else {
-		defer cleanup(virtCli, app.namespace, newVM.GetName())
 	}
 
 	logger.Object(newVM).Infof("Virtual Machine launched")
@@ -146,6 +158,8 @@ func (app *vmCtlApp) Run() {
 	stop := make(chan os.Signal)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+
+	cleanup(virtCli, app.namespace, newVM.GetName())
 }
 
 func (app *vmCtlApp) AddFlags() {
