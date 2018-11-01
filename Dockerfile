@@ -4,8 +4,7 @@ RUN yum install -y golang make
 ENV GOPATH=/go
 RUN mkdir -p /go/src/kubevirt.io/vmctl/cmd/vmctl
 RUN mkdir -p /go/src/kubevirt.io/vendor
-COPY cmd/vmctl/vmctl.go /go/src/kubevirt.io/vmctl/cmd/vmctl/vmctl.go
-COPY vendor /go/src/kubevirt.io/vmctl/vendor/
+COPY . /go/src/kubevirt.io/vmctl/
 
 WORKDIR /go/src/kubevirt.io/vmctl/cmd/vmctl/
 RUN go build vmctl.go
