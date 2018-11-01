@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/fabiand/vmctl.svg?branch=master)](https://travis-ci.com/fabiand/vmctl)
+[![Docker Repository on Quay](https://quay.io/repository/fabiand/vmctl/status "Docker Repository on Quay")](https://quay.io/repository/fabiand/vmctl)
 
 # Overview
 
