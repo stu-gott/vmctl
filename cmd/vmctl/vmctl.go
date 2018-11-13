@@ -24,163 +24,34 @@ import (
 	"fmt"
 	flag "github.com/spf13/pflag"
 	"os"
-	"os/signal"
-	"syscall"
 
-	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/apis/core"
 
-	"io/ioutil"
-	"kubevirt.io/kubevirt/pkg/api/v1"
-	"kubevirt.io/kubevirt/pkg/kubecli"
-	"kubevirt.io/kubevirt/pkg/log"
-	"kubevirt.io/kubevirt/pkg/service"
+	"kubevirt.io/vmctl/pkg/vmctl"
 )
 
 const (
 	hostOverride = ""
-	podNamePath  = "/etc/podinfo/name"
-	podResource  = "pods"
 )
 
-type vmCtlApp struct {
-	prototypeVMName string
-	prototypeNS     string
-	namespace       string
-	hostOverride    string
-}
-
-var _ service.Service = &vmCtlApp{}
-
-func cleanup(virtCli kubecli.KubevirtClient, namespace string, vmName string) {
-	logger := log.DefaultLogger()
-	deleteOptions := &k8smetav1.DeleteOptions{}
-	err := virtCli.VirtualMachine(namespace).Delete(vmName, deleteOptions)
-	if err != nil {
-		logger.Errorf("Unable to delete VM: %s/%s", namespace, vmName)
-	} else {
-		logger.Infof("VM deleted: %s", vmName)
-	}
-}
-
-func deriveVM(vm *v1.VirtualMachine, podName string, nodeName string) *v1.VirtualMachine {
-	instanceName := fmt.Sprintf("%s-%s", vm.GetName(), podName)
-
-	newVM := &v1.VirtualMachine{}
-
-	spec := vm.Spec.DeepCopy()
-	newVM.Spec = *spec
-
-	newVM.ObjectMeta.Name = instanceName
-	newVM.Spec.Running = true
-	if vm.Spec.Template == nil {
-		newVM.Spec.Template = &v1.VirtualMachineInstanceTemplateSpec{}
-	}
-	if newVM.Spec.Template.Spec.NodeSelector == nil {
-		newVM.Spec.Template.Spec.NodeSelector = map[string]string{}
-	}
-	newVM.Spec.Template.Spec.NodeSelector["kubernetes.io/hostname"] = nodeName
-
-	return newVM
-}
-
-func getPodName() (string, error) {
-	podName, err := ioutil.ReadFile(podNamePath)
-	if err != nil {
-		return "", fmt.Errorf("Unable to find pod name: %v", err)
-	}
-	return string(podName), nil
-}
-
-func getNodeName(virtCli kubecli.KubevirtClient, namespace string) (string, error) {
-	podName, err := getPodName()
-	if err != nil {
-		return "", err
-	}
-
-	kubeClient := virtCli.CoreV1()
-	getOptions := k8smetav1.GetOptions{}
-
-	pod, err := kubeClient.Pods(namespace).Get(podName, getOptions)
-	if err != nil {
-		return "", fmt.Errorf("Unable to get pod: %v", err)
-	}
-
-	return pod.Spec.NodeName, nil
-}
-
-func (app *vmCtlApp) Run() {
-	logger := log.DefaultLogger()
-
-	virtCli, err := kubecli.GetKubevirtClient()
-	if err != nil {
-		logger.Reason(err).Errorf("Unable to get KubeVirt client")
-		return
-	}
-
-	nodeName := app.hostOverride
-	if nodeName == "" {
-		nodeName, err = getNodeName(virtCli, app.namespace)
-		if err != nil {
-			logger.Reason(err).Errorf("Unable to get node name")
-			return
-		}
-	}
-
-	logger.Infof("Running on node: %s", nodeName)
-
-	podName, err := getPodName()
-	if err != nil {
-		logger.Reason(err).Errorf("Unable to get pod name")
-	}
-
-	getOptions := &k8smetav1.GetOptions{}
-	prototypeNS := app.prototypeNS
-	if prototypeNS == "" {
-		prototypeNS = app.namespace
-	}
-	vm, err := virtCli.VirtualMachine(prototypeNS).Get(app.prototypeVMName, getOptions)
-	if err != nil {
-		logger.Reason(err).Errorf("Unable to fetch prototype VM")
-		return
-	}
-
-	newVM := deriveVM(vm, podName, nodeName)
-	_, err = virtCli.VirtualMachine(app.namespace).Create(newVM)
-	if err != nil {
-		logger.Reason(err).Errorf("Unable to create VM")
-		return
-	}
-
-	logger.Object(newVM).Infof("Virtual Machine launched")
-
-	// wait forever
-	stop := make(chan os.Signal)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-
-	cleanup(virtCli, app.namespace, newVM.GetName())
-}
-
-func (app *vmCtlApp) AddFlags() {
-	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
-
-	flag.StringVar(&app.namespace, "namespace", core.NamespaceDefault, "Namespace to create VirtualMachine in.")
-	flag.StringVar(&app.prototypeNS, "proto-namespace", "", "Namespace of prototype VirtualMachine. Defaults to <namespace>")
-
-	flag.StringVar(&app.hostOverride, "hostname-override", hostOverride,
-		"Name under which the node is registered in Kubernetes, where this vmctl instance is running on.")
-}
-
 func main() {
-	app := &vmCtlApp{}
-	service.Setup(app)
+	var prototypeNS string
+	var namespace string
+	var nodeName string
+
+	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+	flag.StringVar(&namespace, "namespace", core.NamespaceDefault, "Namespace to create VirtualMachine in.")
+	flag.StringVar(&prototypeNS, "proto-namespace", "", "Namespace of prototype VirtualMachine. Defaults to <namespace>")
+
+	flag.StringVar(&nodeName, "hostname-override", hostOverride,
+		"Name under which the node is registered in Kubernetes, where this vmctl instance is running on.")
+
 	if flag.NArg() < 1 {
 		fmt.Fprintf(os.Stderr, "Prototype VM name is required\n")
 		flag.Usage()
 		os.Exit(1)
 	} else {
-		app.prototypeVMName = flag.Arg(0)
+		app := vmctl.NewVmctlApp(flag.Arg(0), prototypeNS, namespace, nodeName)
 		app.Run()
 	}
 	os.Exit(0)
