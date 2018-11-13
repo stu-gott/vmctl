@@ -1,5 +1,8 @@
 TAG=quay.io/fabiand/vmctl
 
+current_dir = $(shell pwd)
+output = $(current_dir)/_out
+
 ifdef BUILD_NEXT
 build:
 	buildah bud -t $(TAG) .
@@ -9,6 +12,10 @@ run:
 
 push:
 	echo
+
+test:
+	rm -rf $(output) && mkdir -p $(output)
+	podman build -f Dockerfile.unit_test -v $(output):/output -t test .
 endif
 
 build:
@@ -19,6 +26,11 @@ build-go: format
 	go build vmctl.go
 
 format:
-	go fmt cmd/vmctl/vmctl.go
+	cd cmd && go fmt ./...
+	cd pkg && go fmt ./...
+
+test:
+	rm -rf $(output) && mkdir -p $(output)
+	docker build -f Dockerfile.unit_test -t test .
 
 .PHONY: format docker
