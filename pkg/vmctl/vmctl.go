@@ -85,20 +85,15 @@ func deriveVM(vm *v1.VirtualMachine, podName string, nodeName string) *v1.Virtua
 	return newVM
 }
 
-func getPodName() (string, error) {
-	podName, err := ioutil.ReadFile(podNamePath)
+func getPodName(namePath string) (string, error) {
+	podName, err := ioutil.ReadFile(namePath)
 	if err != nil {
 		return "", fmt.Errorf("Unable to find pod name: %v", err)
 	}
 	return string(podName), nil
 }
 
-func getNodeName(virtCli kubecli.KubevirtClient, namespace string) (string, error) {
-	podName, err := getPodName()
-	if err != nil {
-		return "", err
-	}
-
+func getPodNodeName(virtCli kubecli.KubevirtClient, namespace string, podName string) (string, error) {
 	kubeClient := virtCli.CoreV1()
 	getOptions := k8smetav1.GetOptions{}
 
@@ -119,9 +114,14 @@ func (app *vmctlApp) Run() {
 		return
 	}
 
+	podName, err := getPodName(podNamePath)
+	if err != nil {
+		logger.Reason(err).Errorf("Unable to get pod name")
+	}
+
 	nodeName := app.hostOverride
 	if nodeName == "" {
-		nodeName, err = getNodeName(virtCli, app.namespace)
+		nodeName, err = getPodNodeName(virtCli, app.namespace, podName)
 		if err != nil {
 			logger.Reason(err).Errorf("Unable to get node name")
 			return
@@ -129,11 +129,6 @@ func (app *vmctlApp) Run() {
 	}
 
 	logger.Infof("Running on node: %s", nodeName)
-
-	podName, err := getPodName()
-	if err != nil {
-		logger.Reason(err).Errorf("Unable to get pod name")
-	}
 
 	getOptions := &k8smetav1.GetOptions{}
 	prototypeNS := app.prototypeNS
