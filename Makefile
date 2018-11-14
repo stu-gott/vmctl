@@ -16,7 +16,8 @@ push:
 test:
 	rm -rf $(output) && mkdir -p $(output)
 	podman build -f Dockerfile.unit_test -v $(output):/output -t test .
-endif
+
+else
 
 build:
 	docker build -t $(TAG) .
@@ -33,4 +34,6 @@ test:
 	rm -rf $(output) && mkdir -p $(output)
 	docker build -f Dockerfile.unit_test -t test .
 
-.PHONY: format docker
+endif
+
+.PHONY: format docker test
