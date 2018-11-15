@@ -24,9 +24,12 @@ import (
 	"fmt"
 	flag "github.com/spf13/pflag"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"k8s.io/kubernetes/pkg/apis/core"
 
+	"kubevirt.io/kubevirt/pkg/kubecli"
 	"kubevirt.io/vmctl/pkg/vmctl"
 )
 
@@ -51,8 +54,20 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	} else {
-		app := vmctl.NewVmctlApp(flag.Arg(0), prototypeNS, namespace, nodeName)
-		app.Run()
+		stop := make(chan struct{})
+		defer close(stop)
+
+		virtCli, err := kubecli.GetKubevirtClient()
+		if err != nil {
+			panic(err)
+		}
+		app := vmctl.NewVmctlApp(virtCli, flag.Arg(0), prototypeNS, namespace, nodeName)
+
+		go app.Run(stop)
+
+		sigStop := make(chan os.Signal)
+		signal.Notify(sigStop, syscall.SIGINT, syscall.SIGTERM)
+		<-sigStop
 	}
 	os.Exit(0)
 }

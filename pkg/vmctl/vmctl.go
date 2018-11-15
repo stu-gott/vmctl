@@ -22,9 +22,6 @@ package vmctl
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
-	"os/signal"
-	"syscall"
 
 	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -42,14 +39,18 @@ type vmctlApp struct {
 	prototypeNS     string
 	namespace       string
 	hostOverride    string
+	client          kubecli.KubevirtClient
+	namePath        string
 }
 
-func NewVmctlApp(prototypeVMName string, prototypeNamespace string, namespace string, hostOverride string) *vmctlApp {
+func NewVmctlApp(virtCli kubecli.KubevirtClient, prototypeVMName string, prototypeNamespace string, namespace string, hostOverride string) *vmctlApp {
 	return &vmctlApp{
 		prototypeVMName: prototypeVMName,
 		prototypeNS:     prototypeNamespace,
 		namespace:       namespace,
 		hostOverride:    hostOverride,
+		client:          virtCli,
+		namePath:        podNamePath,
 	}
 }
 
@@ -58,9 +59,9 @@ func cleanup(virtCli kubecli.KubevirtClient, namespace string, vmName string) {
 	deleteOptions := &k8smetav1.DeleteOptions{}
 	err := virtCli.VirtualMachine(namespace).Delete(vmName, deleteOptions)
 	if err != nil {
-		logger.Errorf("Unable to delete VM: %s/%s", namespace, vmName)
+		logger.Reason(err).Errorf("Unable to delete VM: %s/%s", namespace, vmName)
 	} else {
-		logger.Infof("VM deleted: %s", vmName)
+		logger.Infof("VM deleted: %s/%s", namespace, vmName)
 	}
 }
 
@@ -88,7 +89,7 @@ func deriveVM(vm *v1.VirtualMachine, podName string, nodeName string) *v1.Virtua
 func getPodName(namePath string) (string, error) {
 	podName, err := ioutil.ReadFile(namePath)
 	if err != nil {
-		return "", fmt.Errorf("Unable to find pod name: %v", err)
+		return "", fmt.Errorf("unable to find pod name: %v", err)
 	}
 	return string(podName), nil
 }
@@ -99,32 +100,27 @@ func getPodNodeName(virtCli kubecli.KubevirtClient, namespace string, podName st
 
 	pod, err := kubeClient.Pods(namespace).Get(podName, getOptions)
 	if err != nil {
-		return "", fmt.Errorf("Unable to get pod: %v", err)
+		return "", fmt.Errorf("unable to get pod: %v", err)
 	}
 
 	return pod.Spec.NodeName, nil
 }
 
-func (app *vmctlApp) Run() {
+func (app *vmctlApp) Run(stop chan struct{}) error {
 	logger := log.DefaultLogger()
 
-	virtCli, err := kubecli.GetKubevirtClient()
-	if err != nil {
-		logger.Reason(err).Errorf("Unable to get KubeVirt client")
-		return
-	}
-
-	podName, err := getPodName(podNamePath)
+	podName, err := getPodName(app.namePath)
 	if err != nil {
 		logger.Reason(err).Errorf("Unable to get pod name")
+		return err
 	}
 
 	nodeName := app.hostOverride
 	if nodeName == "" {
-		nodeName, err = getPodNodeName(virtCli, app.namespace, podName)
+		nodeName, err = getPodNodeName(app.client, app.namespace, podName)
 		if err != nil {
 			logger.Reason(err).Errorf("Unable to get node name")
-			return
+			return err
 		}
 	}
 
@@ -135,25 +131,24 @@ func (app *vmctlApp) Run() {
 	if prototypeNS == "" {
 		prototypeNS = app.namespace
 	}
-	vm, err := virtCli.VirtualMachine(prototypeNS).Get(app.prototypeVMName, getOptions)
+	vm, err := app.client.VirtualMachine(prototypeNS).Get(app.prototypeVMName, getOptions)
 	if err != nil {
 		logger.Reason(err).Errorf("Unable to fetch prototype VM")
-		return
+		return err
 	}
 
 	newVM := deriveVM(vm, podName, nodeName)
-	_, err = virtCli.VirtualMachine(app.namespace).Create(newVM)
+	_, err = app.client.VirtualMachine(app.namespace).Create(newVM)
 	if err != nil {
 		logger.Reason(err).Errorf("Unable to create VM")
-		return
+		return err
 	}
 
 	logger.Object(newVM).Infof("Virtual Machine launched")
 
 	// wait forever
-	stop := make(chan os.Signal)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	cleanup(app.client, app.namespace, newVM.GetName())
 
-	cleanup(virtCli, app.namespace, newVM.GetName())
+	return nil
 }
