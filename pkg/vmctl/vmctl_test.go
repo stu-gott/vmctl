@@ -323,7 +323,9 @@ func NewRandomString(numBytes int) string {
 	if err != nil {
 		panic(err)
 	}
-	return base64.StdEncoding.EncodeToString([]byte(data))
+	// Use the "URL" encoding vice "Standard" to avoid the "/" char
+	// in case this string is going to be used in a K8s object name
+	return base64.URLEncoding.EncodeToString([]byte(data))
 }
 
 func NewRandomVM() (*v1.VirtualMachine, string) {
