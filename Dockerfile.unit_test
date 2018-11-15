@@ -7,4 +7,4 @@ RUN mkdir -p /go/src/kubevirt.io/vendor
 COPY . /go/src/kubevirt.io/vmctl/
 
 WORKDIR /go/src/kubevirt.io/vmctl/pkg
-RUN go test -v -race ./... 2>&1 | tee > /output/output.txt
+RUN go test -cover -v -race ./... 2>&1 | tee /output/output.txt
