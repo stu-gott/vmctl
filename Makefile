@@ -4,23 +4,16 @@ current_dir = $(shell pwd)
 output = $(current_dir)/_out
 
 ifdef BUILD_NEXT
+    CONTAINER_ENGINE := podman
+else
+    CONTAINER_ENGINE := docker
+endif
+
 build:
-	buildah bud -t $(TAG) .
+	$(CONTAINER_ENGINE) build -t $(TAG) .
 
 run:
-	podman run --rm -it --entrypoint /bin/sh --privileged quay.io/fabiand/vmctl
-
-push:
-	echo
-
-test:
-	rm -rf $(output) && mkdir -p $(output)
-	podman build -f Dockerfile.unit_test -v $(output):/output -t test .
-
-else
-
-build:
-	docker build -t $(TAG) .
+	$(CONTAINER_ENGINE) run --rm -it --entrypoint /bin/sh --privileged $(TAG)
 
 build-go: format
 	cd cmd/vmctl ;\
@@ -30,10 +23,10 @@ format:
 	cd cmd && go fmt ./...
 	cd pkg && go fmt ./...
 
-test:
-	rm -rf $(output) && mkdir -p $(output)
-	docker build -f Dockerfile.unit_test -t test .
+push:
+	$(CONTAINER_ENGINE) push $(TAG)
 
-endif
+test:
+	cd pkg && go test ./...
 
 .PHONY: format docker test
