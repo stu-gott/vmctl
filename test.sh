@@ -19,7 +19,7 @@ do
   kubectl scale --replicas=$SCALE deployment/vmctl
   kubectl get deployments | egrep "vmctl\s+$SCALE"
 
-  kubectl wait --for condition=available deployment vmctl
+  kubectl wait --for condition=available deployment vmctl --timeout=240s
 
   kubectl get vm,vmi
 
